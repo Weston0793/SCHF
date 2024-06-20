@@ -6,4 +6,3 @@ numpy
 opencv-python-headless
 scikit-image
 matplotlib
-random
