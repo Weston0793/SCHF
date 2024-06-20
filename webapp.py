@@ -11,7 +11,6 @@ import cv2
 from skimage import exposure
 import matplotlib.pyplot as plt
 
-
 # Function to load model weights
 def load_custom_model_weights(model, model_weights_path):
     checkpoint = torch.load(model_weights_path, map_location='cpu')
@@ -49,40 +48,10 @@ class BinaryMobileNetV3Small(nn.Module):
 lion_model = BinaryMobileNetV3Small()
 swdsgd_model = BinaryMobileNetV2()
 
-# Load the segmentation model
-class ResNetUNet(nn.Module):
-    def __init__(self):
-        super(ResNetUNet, self).__init__()
-        resnet = models.resnet18()
-        self.encoder = nn.Sequential(
-            nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False),
-            resnet.bn1,
-            resnet.relu,
-            resnet.maxpool,
-            resnet.layer1,
-            resnet.layer2
-        )
-        self.middle = resnet.layer3
-        self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(128, 64, kernel_size=3, padding=1),
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(64, 32, kernel_size=2, stride=2),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(32, 1, kernel_size=3, padding=1),
-            nn.Upsample(size=(256, 256), mode='bilinear', align_corners=False)
-        )
-
-    def forward(self, x):
-        x1 = self.encoder(x)
-        x2 = self.middle(x1)
-        x3 = self.decoder(x2)
-        return torch.sigmoid(x3)
-
-cropmodel = ResNetUNet()
-cropmodel.load_state_dict(torch.load('models/best_model_cropper.pth', map_location=torch.device('cpu')))
-cropmodel.eval()
+# Load the twin models
+models_folder = "models"
+lion_model = load_custom_model_weights(lion_model, f"{models_folder}/LionMobileNetV3Small.pth")
+swdsgd_model = load_custom_model_weights(swdsgd_model, f"{models_folder}/SWDSGDMobileNetV2.pth")
 
 # Define image enhancement functions
 def adaptive_histogram_equalization(image):
@@ -116,11 +85,6 @@ def generate_cam(model, inputs):
     colorized_cam = cv2.applyColorMap(np.uint8(255 * cam), cv2.COLORMAP_JET)
     return np.float32(colorized_cam) / 255
 
-# Load the twin models
-models_folder = "models"
-lion_model = load_custom_model_weights(lion_model, f"{models_folder}/LionMobileNetV3Small.pth")
-swdsgd_model = load_custom_model_weights(swdsgd_model, f"{models_folder}/SWDSGDMobileNetV2.pth")
-
 # Streamlit app layout
 st.title("Pediatric Supracondylar Humerus Fracture X-Ray Classification with Twin Network")
 uploaded_file = st.file_uploader("Upload X-Ray Image", type=["jpg", "png", "jpeg"])
@@ -133,68 +97,45 @@ if uploaded_file is not None:
 
         st.image(image_np, caption='Uploaded X-Ray', use_column_width=True)
 
-        # Preprocess the image for segmentation
-        image_resized = image.resize((256, 256))
-        image_tensor = transforms.ToTensor()(image_resized).unsqueeze(0)
+        # Apply image enhancements
+        enhanced_image = adaptive_histogram_equalization(image_np)
+        enhanced_image = Image.fromarray(enhanced_image)
+        enhanced_image = sharpen_image(enhanced_image)
+        enhanced_image = contrast_stretching(np.array(enhanced_image))
 
-        # Get segmentation mask
+        st.image(enhanced_image, caption='Enhanced X-Ray', use_column_width=True)
+
+        # Resize for prediction
+        enhanced_image_resized = Image.fromarray(enhanced_image).resize((200, 200))
+
+        # Prepare the enhanced image for prediction
+        enhanced_image_tensor = transforms.ToTensor()(enhanced_image_resized).unsqueeze(0)
+
+        # Perform predictions
         with torch.no_grad():
-            output_mask = cropmodel(image_tensor).squeeze().numpy()
+            lion_output = lion_model(enhanced_image_tensor)
+            swdsgd_output = swdsgd_model(enhanced_image_tensor)
 
-        # Threshold the mask to create binary mask
-        thresholded_mask = (output_mask > 0.5).astype(np.uint8)
-
-        # Find bounding box coordinates for cropping
-        y, x = np.where(thresholded_mask)
-        if len(x) == 0 or len(y) == 0:
-            st.write("No region of interest found in the image.")
+        # Decision logic for twin network
+        if lion_output > 0.5:
+            prediction = "Fractured Pediatric Supracondylar Humerus"
+            confidence = lion_output.item()
+            cam = generate_cam(lion_model, enhanced_image_tensor)
         else:
-            x_min, x_max = np.min(x), np.max(x)
-            y_min, y_max = np.min(y), np.max(y)
+            prediction = "Normal"
+            confidence = 1 - swdsgd_output.item()
+            cam = generate_cam(swdsgd_model, enhanced_image_tensor)
 
-            # Crop the ROI from the original image
-            cropped_image = image.crop((x_min, y_min, x_max, y_max))
-            cropped_image = cropped_image.resize((256, 256))
+        st.write(f"Prediction: {prediction}")
+        st.write(f"Confidence: {confidence:.2f}")
 
-            # Apply image enhancements
-            enhanced_image = adaptive_histogram_equalization(np.array(cropped_image))
-            enhanced_image = Image.fromarray(enhanced_image)
-            enhanced_image = sharpen_image(enhanced_image)
-            enhanced_image = contrast_stretching(np.array(enhanced_image))
+        # Display CAM
+        original_image = enhanced_image_tensor.squeeze().cpu().numpy() * 255
+        original_image = cv2.resize(original_image, (200, 200))
+        original_image = cv2.cvtColor(original_image, cv2.COLOR_GRAY2RGB) / 255
+        overlay = np.uint8(255 * (0.5 * cam + 0.5 * original_image))
 
-            st.image(enhanced_image, caption='Enhanced and Cropped X-Ray', use_column_width=True)
-
-            # Resize for prediction
-            enhanced_image_resized = Image.fromarray(enhanced_image).resize((200, 200))
-
-            # Prepare the enhanced image for prediction
-            enhanced_image_tensor = transforms.ToTensor()(enhanced_image_resized).unsqueeze(0)
-
-            # Perform predictions
-            with torch.no_grad():
-                lion_output = lion_model(enhanced_image_tensor)
-                swdsgd_output = swdsgd_model(enhanced_image_tensor)
-
-            # Decision logic for twin network
-            if lion_output > 0.5:
-                prediction = "Fractured Pediatric Supracondylar Humerus"
-                confidence = lion_output.item()
-                cam = generate_cam(lion_model, enhanced_image_tensor)
-            else:
-                prediction = "Normal"
-                confidence = 1 - swdsgd_output.item()
-                cam = generate_cam(swdsgd_model, enhanced_image_tensor)
-
-            st.write(f"Prediction: {prediction}")
-            st.write(f"Confidence: {confidence:.2f}")
-
-            # Display CAM
-            original_image = enhanced_image_tensor.squeeze().cpu().numpy() * 255
-            original_image = cv2.resize(original_image, (200, 200))
-            original_image = cv2.cvtColor(original_image, cv2.COLOR_GRAY2RGB) / 255
-            overlay = np.uint8(255 * (0.5 * cam + 0.5 * original_image))
-
-            st.image(original_image, caption='Original Image', use_column_width=True)
-            st.image(overlay, caption='CAM Overlay', use_column_width=True)
+        st.image(original_image, caption='Original Image', use_column_width=True)
+        st.image(overlay, caption='CAM Overlay', use_column_width=True)
     except Exception as e:
         st.error(f"An error occurred: {e}")
