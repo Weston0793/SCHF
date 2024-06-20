@@ -51,7 +51,7 @@ swdsgd_model = BinaryMobileNetV2()
 class ResNetUNet(nn.Module):
     def __init__(self):
         super(ResNetUNet, self).__init__()
-        resnet = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
+        resnet = models.resnet18()
         self.encoder = nn.Sequential(
             nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False),
             resnet.bn1,
