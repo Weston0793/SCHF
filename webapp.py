@@ -3,27 +3,25 @@ import torch
 import torch.nn as nn
 import torchvision
 import torchvision.models as models
-from PIL import Image
+from PIL import Image, ImageOps, ImageFilter
 from torchvision.models import MobileNet_V2_Weights, MobileNet_V3_Small_Weights
 import numpy as np
 import cv2
 from skimage import exposure
 import matplotlib.pyplot as plt
 
+
 # Function to load model weights
 def load_model_weights(model, model_weights_path):
     checkpoint = torch.load(model_weights_path, map_location='cpu')
-    if 'model_state_dict' in checkpoint:
-        model.load_state_dict(checkpoint['model_state_dict'])
-    else:
-        model.load_state_dict(checkpoint)
+    model.load_state_dict(checkpoint)
     return model
 
 # Define your models
 class BinaryMobileNetV2(nn.Module):
     def __init__(self):
         super(BinaryMobileNetV2, self).__init__()
-        base_model = models.mobilenet_v2(weights=MobileNet_V2_Weights.IMAGENET1K_V1)
+        base_model = models.mobilenet_v2()
         base_model.features[0][0] = nn.Conv2d(1, 32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False)
         base_model.classifier[-1] = nn.Linear(in_features=1280, out_features=1)
         self.base_model = base_model
@@ -34,7 +32,7 @@ class BinaryMobileNetV2(nn.Module):
 class BinaryMobileNetV3Small(nn.Module):
     def __init__(self):
         super(BinaryMobileNetV3Small, self).__init__()
-        base_model = models.mobilenet_v3_small(weights=MobileNet_V3_Small_Weights.IMAGENET1K_V1)
+        base_model = models.mobilenet_v3_small()
         base_model.features[0][0] = nn.Conv2d(1, 16, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False)
         base_model.classifier = nn.Sequential(
             nn.Linear(in_features=576, out_features=1, bias=True),
@@ -85,15 +83,16 @@ cropmodel.load_state_dict(torch.load('models/best_model_cropper.pth', map_locati
 cropmodel.eval()
 
 # Define image enhancement functions
-def adaptive_histogram_equalization(image, clip_limit=2.0, tile_grid_size=(8, 8)):
-    clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
-    equalized_image = clahe.apply(image)
-    return equalized_image
+def adaptive_histogram_equalization(image):
+    img = Image.fromarray(image)
+    img = img.convert('L')
+    equalized_image = ImageOps.equalize(img)
+    return np.array(equalized_image)
 
-def sharpen_image(image, sigma=1, alpha=1.5, beta=-0.5):
-    blurred = cv2.GaussianBlur(image, (0, 0), sigma)
-    sharpened = cv2.addWeighted(image, alpha, blurred, beta, 0)
-    return sharpened
+def sharpen_image(image, alpha=1.5, beta=-0.5):
+    blurred = image.filter(ImageFilter.GaussianBlur(1))
+    sharpened = Image.blend(image, blurred, alpha)
+    return np.array(sharpened)
 
 def contrast_stretching(image):
     p2, p98 = np.percentile(image, (2, 98))
@@ -126,15 +125,15 @@ uploaded_file = st.file_uploader("Upload X-Ray Image", type=["jpg", "png", "jpeg
 
 if uploaded_file is not None:
     try:
-        # Read the image using OpenCV
-        file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
-        image = cv2.imdecode(file_bytes, cv2.IMREAD_GRAYSCALE)  # Load as grayscale
+        # Read the image using PIL
+        image = Image.open(uploaded_file).convert('L')
+        image_np = np.array(image)
 
-        st.image(image, caption='Uploaded X-Ray', use_column_width=True)
+        st.image(image_np, caption='Uploaded X-Ray', use_column_width=True)
 
         # Preprocess the image for segmentation
-        image_resized = cv2.resize(image, (256, 256))
-        image_tensor = torch.tensor(image_resized, dtype=torch.float32).unsqueeze(0).unsqueeze(0)
+        image_resized = image.resize((256, 256))
+        image_tensor = transforms.ToTensor()(image_resized).unsqueeze(0)
 
         # Get segmentation mask
         with torch.no_grad():
@@ -152,21 +151,22 @@ if uploaded_file is not None:
             y_min, y_max = np.min(y), np.max(y)
 
             # Crop the ROI from the original image
-            cropped_image = image[y_min:y_max, x_min:x_max]
-            cropped_image = cv2.resize(cropped_image, (256, 256))
+            cropped_image = image.crop((x_min, y_min, x_max, y_max))
+            cropped_image = cropped_image.resize((256, 256))
 
             # Apply image enhancements
-            enhanced_image = adaptive_histogram_equalization(cropped_image)
+            enhanced_image = adaptive_histogram_equalization(np.array(cropped_image))
+            enhanced_image = Image.fromarray(enhanced_image)
             enhanced_image = sharpen_image(enhanced_image)
-            enhanced_image = contrast_stretching(enhanced_image)
+            enhanced_image = contrast_stretching(np.array(enhanced_image))
 
             st.image(enhanced_image, caption='Enhanced and Cropped X-Ray', use_column_width=True)
 
             # Resize for prediction
-            enhanced_image_resized = cv2.resize(enhanced_image, (200, 200))
+            enhanced_image_resized = Image.fromarray(enhanced_image).resize((200, 200))
 
             # Prepare the enhanced image for prediction
-            enhanced_image_tensor = torch.tensor(enhanced_image_resized, dtype=torch.float32).unsqueeze(0).unsqueeze(0)
+            enhanced_image_tensor = transforms.ToTensor()(enhanced_image_resized).unsqueeze(0)
 
             # Perform predictions
             with torch.no_grad():
