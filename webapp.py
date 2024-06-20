@@ -11,6 +11,7 @@ import cv2
 from skimage import exposure
 import matplotlib.pyplot as plt
 
+
 # Function to load model weights
 def load_custom_model_weights(model, model_weights_path):
     checkpoint = torch.load(model_weights_path, map_location='cpu')
@@ -28,7 +29,11 @@ class BinaryMobileNetV2(nn.Module):
         self.base_model = base_model
 
     def forward(self, x):
-        return torch.sigmoid(self.base_model(x))
+        x = self.base_model.features(x)
+        x = self.base_model.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.base_model.classifier(x)
+        return torch.sigmoid(x)
 
 class BinaryMobileNetV3Small(nn.Module):
     def __init__(self):
@@ -42,7 +47,10 @@ class BinaryMobileNetV3Small(nn.Module):
         self.base_model = base_model
 
     def forward(self, x):
-        return self.base_model(x)
+        x = self.base_model.features(x)
+        x = x.mean([2, 3])
+        x = self.base_model.classifier(x)
+        return x
 
 # Initialize models
 lion_model = BinaryMobileNetV3Small()
@@ -73,15 +81,28 @@ def contrast_stretching(image):
 # Define CAM functionality
 def generate_cam(model, inputs):
     model.eval()
-    outputs = model(inputs)
-    feature_maps = model.base_model.features[-1]  # Get the feature maps from the last layer of features
-    weights = model.base_model.classifier[0].weight.detach().cpu().numpy()  # Adjust according to your model architecture
-    cam = np.zeros(feature_maps.shape[2:])
-    for k, w in enumerate(weights[0]):
-        cam += w * feature_maps[0, k].detach().cpu().numpy()
+    feature_maps = None
+    def hook_fn(module, input, output):
+        nonlocal feature_maps
+        feature_maps = output
+    
+    # Register hook to the last convolutional layer
+    hook = model.base_model.features[-1].register_forward_hook(hook_fn)
+    
+    with torch.no_grad():
+        outputs = model(inputs)
+    
+    hook.remove()
+    
+    weights = model.base_model.classifier[0].weight.detach().cpu().numpy()
+    cam = np.zeros(feature_maps.shape[2:], dtype=np.float32)
+    
+    for i, w in enumerate(weights[0]):
+        cam += w * feature_maps[0, i].detach().cpu().numpy()
+    
     cam = np.maximum(cam, 0)
-    cam = cam / np.max(cam)
-    cam = cv2.resize(cam, (200, 200))
+    cam = cam / cam.max()
+    cam = cv2.resize(cam, (inputs.shape[2], inputs.shape[3]))
     colorized_cam = cv2.applyColorMap(np.uint8(255 * cam), cv2.COLORMAP_JET)
     return np.float32(colorized_cam) / 255
 
