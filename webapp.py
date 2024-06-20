@@ -153,5 +153,19 @@ if uploaded_file is not None:
 
         # Determine final prediction
         if any(pred == 1 for pred in lion_predictions):
-            predicti
+            prediction = "Fractured Pediatric Supracondylar Humerus"
+            confidence = np.mean(lion_predictions)
+        else:
+            if any(pred == 1 for pred in swdsgd_predictions):
+                prediction = "Fractured Pediatric Supracondylar Humerus"
+                confidence = np.mean(swdsgd_predictions)
+            else:
+                prediction = "Normal"
+                confidence = 1 - np.mean(swdsgd_predictions)
+
+        st.write(f"**Prediction:** {prediction}")
+        st.write(f"**Confidence:** {confidence:.2f}")
+
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
 
