@@ -78,20 +78,19 @@ swdsgd_model = load_custom_model_weights(swdsgd_model, f"{models_folder}/SWDSGDM
 
 # Define image enhancement functions
 def adaptive_histogram_equalization(image):
-    img = Image.fromarray(image)
-    img = img.convert('L')
-    equalized_image = ImageOps.equalize(img)
-    return np.array(equalized_image)
+    equalized_image = ImageOps.equalize(image)
+    return equalized_image
 
 def sharpen_image(image, alpha=1.5, beta=-0.5):
     blurred = image.filter(ImageFilter.GaussianBlur(1))
     sharpened = Image.blend(image, blurred, alpha)
-    return np.array(sharpened)
+    return sharpened
 
 def contrast_stretching(image):
-    p2, p98 = np.percentile(image, (2, 98))
-    img_rescale = exposure.rescale_intensity(image, in_range=(p2, p98))
-    return img_rescale
+    image_np = np.array(image)
+    p2, p98 = np.percentile(image_np, (2, 98))
+    img_rescale = exposure.rescale_intensity(image_np, in_range=(p2, p98))
+    return Image.fromarray(img_rescale)
 
 # Define function to create dataset with transformations
 def create_transformed_dataset(image, batch_size=20):
@@ -115,15 +114,12 @@ if uploaded_file is not None:
     try:
         # Read the image using PIL
         image = Image.open(uploaded_file).convert('L')
-        image_np = np.array(image)
-
-        st.image(image_np, caption='Uploaded X-Ray', use_column_width=True)
+        st.image(image, caption='Uploaded X-Ray', use_column_width=True)
 
         # Apply image enhancements
-        enhanced_image = adaptive_histogram_equalization(image_np)
-        enhanced_image = Image.fromarray(enhanced_image)
+        enhanced_image = adaptive_histogram_equalization(image)
         enhanced_image = sharpen_image(enhanced_image)
-        enhanced_image = contrast_stretching(np.array(enhanced_image))
+        enhanced_image = contrast_stretching(enhanced_image)
 
         st.image(enhanced_image, caption='Enhanced X-Ray', use_column_width=True)
 
@@ -169,4 +165,3 @@ if uploaded_file is not None:
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
-
