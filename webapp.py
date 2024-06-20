@@ -30,8 +30,7 @@ class BinaryMobileNetV2(nn.Module):
 
     def forward(self, x):
         x = self.base_model.features(x)
-        x = self.base_model.avgpool(x)
-        x = torch.flatten(x, 1)
+        x = x.mean([2, 3])  # Global average pooling
         x = self.base_model.classifier(x)
         return torch.sigmoid(x)
 
@@ -48,7 +47,7 @@ class BinaryMobileNetV3Small(nn.Module):
 
     def forward(self, x):
         x = self.base_model.features(x)
-        x = x.mean([2, 3])
+        x = x.mean([2, 3])  # Global average pooling
         x = self.base_model.classifier(x)
         return x
 
