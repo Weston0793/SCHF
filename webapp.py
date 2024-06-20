@@ -12,7 +12,7 @@ import cv2
 from skimage import exposure
 import matplotlib.pyplot as plt
 import random
-
+from cam_helper import get_cam, apply_cam_on_image  # Import the CAM helper functions
 
 # Define custom dataset
 class CustomDataset(Dataset):
@@ -168,6 +168,11 @@ if uploaded_file is not None:
 
         st.write(f"**Prediction:** {prediction}")
         st.write(f"**Confidence:** {confidence:.2f}")
+
+        # Get and display CAM
+        cam = get_cam(lion_model, inputs, 'features.18.0')
+        cam_image = apply_cam_on_image(np.array(enhanced_image), cam)
+        st.image(cam_image, caption='Class Activation Map (CAM)', use_column_width=True)
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
