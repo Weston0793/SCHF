@@ -67,10 +67,6 @@ def adaptive_histogram_equalization(image):
     equalized_image = ImageOps.equalize(img)
     return np.array(equalized_image)
 
-def sharpen_image(image, alpha=1.5, beta=-0.5):
-    blurred = image.filter(ImageFilter.GaussianBlur(1))
-    sharpened = Image.blend(image, blurred, alpha)
-    return np.array(sharpened)
 
 
 # Streamlit app layout
@@ -88,7 +84,6 @@ if uploaded_file is not None:
         # Apply image enhancements
         enhanced_image = adaptive_histogram_equalization(image_np)
         enhanced_image = Image.fromarray(enhanced_image)
-        enhanced_image = sharpen_image(enhanced_image)
 
         st.image(enhanced_image, caption='Enhanced X-Ray', use_column_width=True)
 
