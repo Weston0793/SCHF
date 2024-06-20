@@ -77,6 +77,24 @@ def contrast_stretching(image):
     img_rescale = exposure.rescale_intensity(image, in_range=(p2, p98))
     return img_rescale
 
+# Evaluation function for single image
+def evaluate_single_image(lion_model, swdsgd_model, image_tensor):
+    lion_model.eval()
+    swdsgd_model.eval()
+    
+    with torch.no_grad():
+        lion_output = lion_model(image_tensor)
+        swdsgd_output = swdsgd_model(image_tensor)
+
+    if lion_output > 0.5:
+        prediction = "Fractured Pediatric Supracondylar Humerus"
+        confidence = lion_output.item()
+    else:
+        prediction = "Normal"
+        confidence = 1 - swdsgd_output.item()
+    
+    return prediction, confidence
+
 # Streamlit app layout
 st.title("Pediatric Supracondylar Humerus Fracture X-Ray Classification with Twin Network")
 uploaded_file = st.file_uploader("Upload X-Ray Image", type=["jpg", "png", "jpeg"])
@@ -103,18 +121,8 @@ if uploaded_file is not None:
         # Prepare the enhanced image for prediction
         enhanced_image_tensor = transforms.ToTensor()(enhanced_image_resized).unsqueeze(0)
 
-        # Perform predictions
-        with torch.no_grad():
-            lion_output = lion_model(enhanced_image_tensor)
-            swdsgd_output = swdsgd_model(enhanced_image_tensor)
-
-        # Decision logic for twin network
-        if lion_output > 0.5:
-            prediction = "Fractured Pediatric Supracondylar Humerus"
-            confidence = lion_output.item()
-        else:
-            prediction = "Normal"
-            confidence = 1 - swdsgd_output.item()
+        # Perform evaluation on single image
+        prediction, confidence = evaluate_single_image(lion_model, swdsgd_model, enhanced_image_tensor)
 
         st.write(f"**Prediction:** {prediction}")
         st.write(f"**Confidence:** {confidence:.2f}")
