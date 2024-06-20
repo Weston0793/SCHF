@@ -21,7 +21,11 @@ def get_cam(model, img_tensor, target_layer):
         activation[0] = output
     
     activation = {}
-    hook = model._modules.get(target_layer).register_forward_hook(forward_hook)
+    layer = dict([*model.named_modules()]).get(target_layer, None)
+    if layer is None:
+        raise ValueError(f"Layer {target_layer} not found in the model")
+        
+    hook = layer.register_forward_hook(forward_hook)
     
     with torch.no_grad():
         output = model(img_tensor)
