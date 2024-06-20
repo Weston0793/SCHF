@@ -170,7 +170,7 @@ if uploaded_file is not None:
         st.write(f"**Confidence:** {confidence:.2f}")
 
         # Get and display CAM
-        cam = get_cam(lion_model, inputs, 'features.18.0')
+        cam = get_cam(lion_model, inputs, 'base_model.features.12')  # Update with the correct layer name
         cam_image = apply_cam_on_image(np.array(enhanced_image), cam)
         st.image(cam_image, caption='Class Activation Map (CAM)', use_column_width=True)
 
