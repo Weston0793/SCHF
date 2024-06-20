@@ -12,9 +12,10 @@ import matplotlib.pyplot as plt
 
 
 # Function to load model weights
-def load_model_weights(model, model_weights_path):
+def load_custom_model_weights(model, model_weights_path):
     checkpoint = torch.load(model_weights_path, map_location='cpu')
-    model.load_state_dict(checkpoint)
+    model_state_dict = checkpoint["model_state_dict"]
+    model.load_state_dict(model_state_dict)
     return model
 
 # Define your models
@@ -116,8 +117,8 @@ def generate_cam(model, inputs):
 
 # Load the twin models
 models_folder = "models"
-lion_model = load_model_weights(lion_model, f"{models_folder}/LionMobileNetV3Small.pth")
-swdsgd_model = load_model_weights(swdsgd_model, f"{models_folder}/SWDSGDMobileNetV2.pth")
+lion_model = load_custom_model_weights(lion_model, f"{models_folder}/LionMobileNetV3Small.pth")
+swdsgd_model = load_custom_model_weights(swdsgd_model, f"{models_folder}/SWDSGDMobileNetV2.pth")
 
 # Streamlit app layout
 st.title("Pediatric Supracondylar Humerus Fracture X-Ray Classification with Twin Network")
