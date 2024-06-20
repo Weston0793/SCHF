@@ -171,7 +171,7 @@ if uploaded_file is not None:
 
         # Get and display CAM
         cam = get_cam(lion_model, inputs, 'base_model.features.12')  # Update with the correct layer name
-        cam_image = apply_cam_on_image(np.array(enhanced_image), cam)
+        cam_image = apply_cam_on_image(np.array(enhanced_image.convert('RGB')), cam)  # Convert to RGB for color map application
         st.image(cam_image, caption='Class Activation Map (CAM)', use_column_width=True)
 
     except Exception as e:
