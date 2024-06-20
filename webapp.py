@@ -72,28 +72,6 @@ def sharpen_image(image, alpha=1.5, beta=-0.5):
     sharpened = Image.blend(image, blurred, alpha)
     return np.array(sharpened)
 
-def contrast_stretching(image):
-    p2, p98 = np.percentile(image, (2, 98))
-    img_rescale = exposure.rescale_intensity(image, in_range=(p2, p98))
-    return img_rescale
-
-# Evaluation function for single image
-def evaluate_single_image(lion_model, swdsgd_model, image_tensor):
-    lion_model.eval()
-    swdsgd_model.eval()
-    
-    with torch.no_grad():
-        lion_output = lion_model(image_tensor)
-        swdsgd_output = swdsgd_model(image_tensor)
-
-    if lion_output > 0.5:
-        prediction = "Fractured Pediatric Supracondylar Humerus"
-        confidence = lion_output.item()
-    else:
-        prediction = "Normal"
-        confidence = 1 - swdsgd_output.item()
-    
-    return prediction, confidence
 
 # Streamlit app layout
 st.title("Pediatric Supracondylar Humerus Fracture X-Ray Classification with Twin Network")
@@ -111,7 +89,6 @@ if uploaded_file is not None:
         enhanced_image = adaptive_histogram_equalization(image_np)
         enhanced_image = Image.fromarray(enhanced_image)
         enhanced_image = sharpen_image(enhanced_image)
-        enhanced_image = contrast_stretching(np.array(enhanced_image))
 
         st.image(enhanced_image, caption='Enhanced X-Ray', use_column_width=True)
 
@@ -121,8 +98,23 @@ if uploaded_file is not None:
         # Prepare the enhanced image for prediction
         enhanced_image_tensor = transforms.ToTensor()(enhanced_image_resized).unsqueeze(0)
 
-        # Perform evaluation on single image
-        prediction, confidence = evaluate_single_image(lion_model, swdsgd_model, enhanced_image_tensor)
+        # Perform predictions
+        with torch.no_grad():
+            lion_output = lion_model(enhanced_image_tensor)
+
+        if lion_output > 0.5:
+            prediction = "Fractured Pediatric Supracondylar Humerus"
+            confidence = lion_output.item()
+        else:
+            with torch.no_grad():
+                swdsgd_output = swdsgd_model(enhanced_image_tensor)
+            
+            if swdsgd_output > 0.5:
+                prediction = "Fractured Pediatric Supracondylar Humerus"
+                confidence = swdsgd_output.item()
+            else:
+                prediction = "Normal Humerus"
+                confidence = 1 - swdsgd_output.item()
 
         st.write(f"**Prediction:** {prediction}")
         st.write(f"**Confidence:** {confidence:.2f}")
