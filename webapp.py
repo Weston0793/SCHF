@@ -10,7 +10,22 @@ import numpy as np
 import cv2
 from skimage import exposure
 import matplotlib.pyplot as plt
+import random
 
+# Define custom dataset
+class CustomDataset(Dataset):
+    def __init__(self, images, transform=None):
+        self.images = images
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, idx):
+        image = self.images[idx]
+        if self.transform:
+            image = self.transform(image)
+        return image
 
 # Function to load model weights
 def load_custom_model_weights(model, model_weights_path):
@@ -67,7 +82,29 @@ def adaptive_histogram_equalization(image):
     equalized_image = ImageOps.equalize(img)
     return np.array(equalized_image)
 
+def sharpen_image(image, alpha=1.5, beta=-0.5):
+    blurred = image.filter(ImageFilter.GaussianBlur(1))
+    sharpened = Image.blend(image, blurred, alpha)
+    return np.array(sharpened)
 
+def contrast_stretching(image):
+    p2, p98 = np.percentile(image, (2, 98))
+    img_rescale = exposure.rescale_intensity(image, in_range=(p2, p98))
+    return img_rescale
+
+# Define function to create dataset with transformations
+def create_transformed_dataset(image, batch_size=20):
+    transform = transforms.Compose([
+        transforms.Resize(240),
+        transforms.CenterCrop(200),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(10),
+        transforms.RandomAffine(degrees=10, translate=(0.1, 0.1), scale=(0.9, 1.1), shear=10),
+        transforms.ToTensor()
+    ])
+    dataset = [image for _ in range(batch_size)]
+    dataset = CustomDataset(images=dataset, transform=transform)
+    return dataset
 
 # Streamlit app layout
 st.title("Pediatric Supracondylar Humerus Fracture X-Ray Classification with Twin Network")
@@ -84,35 +121,37 @@ if uploaded_file is not None:
         # Apply image enhancements
         enhanced_image = adaptive_histogram_equalization(image_np)
         enhanced_image = Image.fromarray(enhanced_image)
+        enhanced_image = sharpen_image(enhanced_image)
+        enhanced_image = contrast_stretching(np.array(enhanced_image))
 
         st.image(enhanced_image, caption='Enhanced X-Ray', use_column_width=True)
 
-        # Resize for prediction
-        enhanced_image_resized = Image.fromarray(enhanced_image).resize((200, 200))
+        # Create dataset with transformations
+        transformed_dataset = create_transformed_dataset(enhanced_image, batch_size=20)
+        dataloader = DataLoader(transformed_dataset, batch_size=1)
 
-        # Prepare the enhanced image for prediction
-        enhanced_image_tensor = transforms.ToTensor()(enhanced_image_resized).unsqueeze(0)
+        lion_model.eval()
+        swdsgd_model.eval()
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        # Perform predictions
-        with torch.no_grad():
-            lion_output = lion_model(enhanced_image_tensor)
+        # Initialize prediction variables
+        lion_predictions = []
+        swdsgd_predictions = []
 
-        if lion_output > 0.5:
-            prediction = "Fractured Pediatric Supracondylar Humerus"
-            confidence = lion_output.item()
-        else:
+        for inputs in dataloader:
+            inputs = inputs.to(device)
             with torch.no_grad():
-                swdsgd_output = swdsgd_model(enhanced_image_tensor)
-            
-            if swdsgd_output > 0.5:
-                prediction = "Fractured Pediatric Supracondylar Humerus"
-                confidence = swdsgd_output.item()
-            else:
-                prediction = "Normal Humerus"
-                confidence = 1 - swdsgd_output.item()
+                lion_output = lion_model(inputs)
+                lion_pred = (lion_output > 0.5).view(-1).long()
+                lion_predictions.extend(lion_pred.cpu().numpy())
 
-        st.write(f"**Prediction:** {prediction}")
-        st.write(f"**Confidence:** {confidence:.2f}")
+                # Only run swdsgd_model if lion_model predicts "Normal"
+                if lion_pred == 0:
+                    swdsgd_output = swdsgd_model(inputs)
+                    swdsgd_pred = (swdsgd_output > 0.5).view(-1).long()
+                    swdsgd_predictions.extend(swdsgd_pred.cpu().numpy())
 
-    except Exception as e:
-        st.error(f"An error occurred: {e}")
+        # Determine final prediction
+        if any(pred == 1 for pred in lion_predictions):
+            predicti
+
