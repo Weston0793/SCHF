@@ -11,7 +11,6 @@ import cv2
 from skimage import exposure
 import matplotlib.pyplot as plt
 
-
 # Function to load model weights
 def load_custom_model_weights(model, model_weights_path):
     checkpoint = torch.load(model_weights_path, map_location='cpu')
@@ -86,7 +85,10 @@ def generate_cam(model, inputs):
         feature_maps = output
     
     # Register hook to the last convolutional layer
-    hook = model.base_model.features[-1].register_forward_hook(hook_fn)
+    if isinstance(model, BinaryMobileNetV2):
+        hook = model.base_model.features[-1].register_forward_hook(hook_fn)
+    elif isinstance(model, BinaryMobileNetV3Small):
+        hook = model.base_model.features[-1].register_forward_hook(hook_fn)
     
     with torch.no_grad():
         outputs = model(inputs)
