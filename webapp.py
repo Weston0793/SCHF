@@ -11,6 +11,7 @@ import cv2
 from skimage import exposure
 import matplotlib.pyplot as plt
 
+
 # Function to load model weights
 def load_custom_model_weights(model, model_weights_path):
     checkpoint = torch.load(model_weights_path, map_location='cpu')
@@ -76,37 +77,6 @@ def contrast_stretching(image):
     img_rescale = exposure.rescale_intensity(image, in_range=(p2, p98))
     return img_rescale
 
-# Define CAM functionality
-def generate_cam(model, inputs):
-    model.eval()
-    feature_maps = None
-    def hook_fn(module, input, output):
-        nonlocal feature_maps
-        feature_maps = output
-    
-    # Register hook to the last convolutional layer
-    if isinstance(model, BinaryMobileNetV2):
-        hook = model.base_model.features[-1].register_forward_hook(hook_fn)
-    elif isinstance(model, BinaryMobileNetV3Small):
-        hook = model.base_model.features[-1].register_forward_hook(hook_fn)
-    
-    with torch.no_grad():
-        outputs = model(inputs)
-    
-    hook.remove()
-    
-    weights = model.base_model.classifier[0].weight.detach().cpu().numpy()
-    cam = np.zeros(feature_maps.shape[2:], dtype=np.float32)
-    
-    for i, w in enumerate(weights[0]):
-        cam += w * feature_maps[0, i].detach().cpu().numpy()
-    
-    cam = np.maximum(cam, 0)
-    cam = cam / cam.max()
-    cam = cv2.resize(cam, (inputs.shape[2], inputs.shape[3]))
-    colorized_cam = cv2.applyColorMap(np.uint8(255 * cam), cv2.COLORMAP_JET)
-    return np.float32(colorized_cam) / 255
-
 # Streamlit app layout
 st.title("Pediatric Supracondylar Humerus Fracture X-Ray Classification with Twin Network")
 uploaded_file = st.file_uploader("Upload X-Ray Image", type=["jpg", "png", "jpeg"])
@@ -142,22 +112,12 @@ if uploaded_file is not None:
         if lion_output > 0.5:
             prediction = "Fractured Pediatric Supracondylar Humerus"
             confidence = lion_output.item()
-            cam = generate_cam(lion_model, enhanced_image_tensor)
         else:
             prediction = "Normal"
             confidence = 1 - swdsgd_output.item()
-            cam = generate_cam(swdsgd_model, enhanced_image_tensor)
 
-        st.write(f"Prediction: {prediction}")
-        st.write(f"Confidence: {confidence:.2f}")
+        st.write(f"**Prediction:** {prediction}")
+        st.write(f"**Confidence:** {confidence:.2f}")
 
-        # Display CAM
-        original_image = enhanced_image_tensor.squeeze().cpu().numpy() * 255
-        original_image = cv2.resize(original_image, (200, 200))
-        original_image = cv2.cvtColor(original_image, cv2.COLOR_GRAY2RGB) / 255
-        overlay = np.uint8(255 * (0.5 * cam + 0.5 * original_image))
-
-        st.image(original_image, caption='Original Image', use_column_width=True)
-        st.image(overlay, caption='CAM Overlay', use_column_width=True)
     except Exception as e:
         st.error(f"An error occurred: {e}")
