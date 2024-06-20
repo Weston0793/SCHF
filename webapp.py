@@ -13,6 +13,7 @@ from skimage import exposure
 import matplotlib.pyplot as plt
 import random
 
+
 # Define custom dataset
 class CustomDataset(Dataset):
     def __init__(self, images, transform=None):
@@ -159,6 +160,11 @@ if uploaded_file is not None:
             else:
                 prediction = "Normal"
                 confidence = 1 - np.mean(swdsgd_predictions)
+        
+        # Apply confidence threshold logic
+        if confidence < 0.10:
+            prediction = "Normal"
+            confidence = 1 - confidence
 
         st.write(f"**Prediction:** {prediction}")
         st.write(f"**Confidence:** {confidence:.2f}")
