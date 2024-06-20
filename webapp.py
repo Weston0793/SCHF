@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torchvision
 import torchvision.models as models
+import torchvision.transforms as transforms
 from PIL import Image, ImageOps, ImageFilter
 from torchvision.models import MobileNet_V2_Weights, MobileNet_V3_Small_Weights
 import numpy as np
