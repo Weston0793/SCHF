@@ -8,6 +8,7 @@ from torch.utils.data import Dataset, DataLoader
 from models import BinaryMobileNetV2, BinaryMobileNetV3Small, ResNetUNet, load_standard_model_weights, load_direct_model_weights
 from autocrop import autocrop_image
 from skimage import exposure, img_as_ubyte
+from cam_helper import get_cam, apply_cam_on_image
 
 # Initialize models
 lion_model = BinaryMobileNetV3Small()
