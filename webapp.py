@@ -157,9 +157,9 @@ if uploaded_file is not None:
             original_image_np = np.array(image)
 
             # Create a full-size CAM mask with three channels
-            full_size_cam = np.zeros((*original_image_np.shape, 3), dtype=np.uint8)
+            full_size_cam = np.zeros((original_image_np.shape[0], original_image_np.shape[1], 3), dtype=np.uint8)
             cam_resized_rgb = np.repeat(cam_resized[:, :, np.newaxis], 3, axis=2)
-            full_size_cam[y_min:y_max, x_min:x_max] = cam_resized_rgb
+            full_size_cam[y_min:y_max, x_min:x_max, :] = cam_resized_rgb
             
             cam_image = apply_cam_on_image(original_image_np, full_size_cam)
             st.image(cam_image, caption='Class Activation Map (CAM) on Original Image', use_column_width=True)
