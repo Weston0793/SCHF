@@ -1,6 +1,7 @@
 import streamlit as st
 import torch
 import numpy as np
+import cv2
 from torchvision import transforms
 from PIL import Image, ImageOps, ImageFilter
 from models import BinaryMobileNetV2, BinaryMobileNetV3Small, ResNetUNet, load_standard_model_weights, load_direct_model_weights
@@ -20,15 +21,17 @@ models_folder = "models"
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 lion_model, swdsgd_model, crop_model = load_models(lion_model, swdsgd_model, crop_model, models_folder, device)
 
-# Define image enhancement functions
-def adaptive_histogram_equalization(image):
-    equalized_image = ImageOps.equalize(image)
-    return equalized_image
+# Define new image enhancement functions
+def adaptive_histogram_equalization(image, clip_limit=2.0, tile_grid_size=(8, 8)):
+    clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
+    equalized_image = clahe.apply(np.array(image))
+    return Image.fromarray(equalized_image)
 
-def sharpen_image(image, alpha=1.5, beta=-0.5):
-    blurred = image.filter(ImageFilter.GaussianBlur(1))
-    sharpened = Image.blend(image, blurred, alpha)
-    return sharpened
+def sharpen_image(image, sigma=1, alpha=1.5, beta=-0.5):
+    image_np = np.array(image)
+    blurred = cv2.GaussianBlur(image_np, (0, 0), sigma)
+    sharpened = cv2.addWeighted(image_np, alpha, blurred, beta, 0)
+    return Image.fromarray(sharpened)
 
 def contrast_stretching(image):
     image_np = np.array(image)
@@ -46,7 +49,7 @@ if uploaded_file is not None:
         image = Image.open(uploaded_file).convert('L')
         st.image(image, caption='Uploaded X-Ray', use_column_width=True)
 
-        # Apply image enhancements on the original image
+        # Apply new image enhancements on the original image
         enhanced_image = adaptive_histogram_equalization(image)
         enhanced_image = sharpen_image(enhanced_image)
         enhanced_image = contrast_stretching(enhanced_image)
@@ -90,4 +93,3 @@ if uploaded_file is not None:
             st.image(cam_image, caption='Class Activation Map (CAM) on Cropped Image', use_column_width=True)
     except Exception as e:
         st.error(f"An error occurred: {e}")
-
