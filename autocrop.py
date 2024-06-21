@@ -23,5 +23,3 @@ def autocrop_image(image_tensor, cropmodel, device, threshold=0.5):
 
     cropped_tensor = torch.tensor(roi).unsqueeze(0).unsqueeze(0)  # Convert to a tensor with appropriate dimensions
     return cropped_tensor, (x_min, y_min, x_max, y_max)
-
-
