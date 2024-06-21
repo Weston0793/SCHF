@@ -86,7 +86,7 @@ if uploaded_file is not None:
             transforms.ToTensor()
         ])
         image_tensor = transform(image).unsqueeze(0).to(device)
-        cropped_image, crop_coords = autocrop_image(image_tensor, crop_model, device)
+        cropped_image, _ = autocrop_image(image_tensor, crop_model, device)
         
         if cropped_image is not None:
             st.image(cropped_image, caption='Cropped X-Ray', use_column_width=True)
@@ -143,26 +143,15 @@ if uploaded_file is not None:
             prediction = "Normal"
             confidence = 1 - confidence
 
-        st.write(f"**Prediction:** {prediction}")
-        st.write(f"**Confidence:** {confidence:.2f}")
+        # Display the prediction in a highlighted box
+        st.markdown(f"<div style='border:2px solid #000; padding: 10px; background-color: #f0f0f0;'><strong>Prediction:</strong> {prediction}<br><strong>Confidence:</strong> {confidence:.2f}</div>", unsafe_allow_html=True)
 
-        # Generate and display CAM
-        if cropped_image is not None and crop_coords is not None:
-            x_min, y_min, x_max, y_max = crop_coords
+        # Generate and display CAM on the cropped image
+        if cropped_image is not None:
             img_tensor = transforms.ToTensor()(enhanced_image).unsqueeze(0).to(device)
             cam = get_cam(lion_model if any(pred == 1 for pred in lion_predictions) else swdsgd_model, img_tensor, 'base_model.features')
-            
-            # Resize CAM to the cropped image size
-            cam_resized = cv2.resize(cam, (x_max - x_min, y_max - y_min))
-            original_image_np = np.array(image)
-
-            # Create a full-size CAM mask with three channels
-            full_size_cam = np.zeros((original_image_np.shape[0], original_image_np.shape[1], 3), dtype=np.uint8)
-            cam_resized_rgb = np.repeat(cam_resized[:, :, np.newaxis], 3, axis=2)
-            full_size_cam[y_min:y_max, x_min:x_max, :] = cam_resized_rgb
-            
-            cam_image = apply_cam_on_image(original_image_np, full_size_cam)
-            st.image(cam_image, caption='Class Activation Map (CAM) on Original Image', use_column_width=True)
+            cam_image = apply_cam_on_image(np.array(cropped_image.convert('RGB')), cam)
+            st.image(cam_image, caption='Class Activation Map (CAM) on Cropped Image', use_column_width=True)
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
