@@ -81,7 +81,7 @@ if uploaded_file is not None:
 
         # Generate and display CAM on the cropped image
         if cropped_image_pil is not None:
-            cropped_image_rgb = cropped_image_pil.convert('RGB')  # Ensure the image is in RGB format
+            cropped_image_rgb = cropped_image_pil.convert('RGB')
             img_tensor = transforms.ToTensor()(cropped_image_rgb).unsqueeze(0).to(device)
             cam = get_cam(lion_model if prediction == "Fractured Pediatric Supracondylar Humerus" else swdsgd_model, img_tensor, 'base_model.features')
             cam_image = apply_cam_on_image(np.array(cropped_image_rgb), cam)
