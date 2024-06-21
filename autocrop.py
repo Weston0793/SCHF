@@ -6,7 +6,7 @@ import cv2
 def autocrop_image(image_tensor, cropmodel, device, threshold=0.5):
     cropmodel.eval()
     with torch.no_grad():
-        output_mask = cropmodel(image_tensor.unsqueeze(0).to(device)).cpu().numpy()
+        output_mask = cropmodel(image_tensor.to(device)).cpu().numpy()
 
     output_mask_2d = output_mask[0, 0]
     thresholded_mask = (output_mask_2d > threshold).astype(np.uint8)
@@ -18,7 +18,7 @@ def autocrop_image(image_tensor, cropmodel, device, threshold=0.5):
     x_min, x_max = np.min(x), np.max(x)
     y_min, y_max = np.min(y), np.max(y)
     
-    roi = image_tensor.numpy().squeeze()[y_min:y_max, x_min:x_max]
+    roi = image_tensor[0, 0].cpu().numpy()[y_min:y_max, x_min:x_max]
     if roi.size == 0:
         return None
 
