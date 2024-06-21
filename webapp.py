@@ -2,6 +2,7 @@ import streamlit as st
 import torch
 from torchvision import transforms
 import numpy as np
+import cv2
 from PIL import Image, ImageOps, ImageFilter
 from torch.utils.data import Dataset, DataLoader
 from models import BinaryMobileNetV2, BinaryMobileNetV3Small, ResNetUNet, load_standard_model_weights, load_direct_model_weights
