@@ -9,22 +9,17 @@ from models import BinaryMobileNetV2, BinaryMobileNetV3Small, ResNetUNet, load_s
 from autocrop import autocrop_image
 from skimage import exposure
 from cam_helper import get_cam, apply_cam_on_image
+from predict import create_transformed_dataset, load_models, predict_fracture, CustomDataset
 
 # Initialize models
 lion_model = BinaryMobileNetV3Small()
 swdsgd_model = BinaryMobileNetV2()
 crop_model = ResNetUNet()
 
-# Load the twin models and crop model
+# Load models
 models_folder = "models"
-lion_model = load_standard_model_weights(lion_model, f"{models_folder}/LionMobileNetV3Small.pth", map_location='cpu')
-swdsgd_model = load_standard_model_weights(swdsgd_model, f"{models_folder}/SWDSGDMobileNetV2.pth", map_location='cpu')
-crop_model = load_direct_model_weights(crop_model, f"{models_folder}/best_model_cropper.pth", map_location='cpu')
-
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-lion_model.to(device)
-swdsgd_model.to(device)
-crop_model.to(device)
+lion_model, swdsgd_model, crop_model = load_models(lion_model, swdsgd_model, crop_model, models_folder, device)
 
 # Define image enhancement functions
 def adaptive_histogram_equalization(image):
@@ -41,34 +36,6 @@ def contrast_stretching(image):
     p2, p98 = np.percentile(image_np, (2, 98))
     img_rescale = exposure.rescale_intensity(image_np, in_range=(p2, p98))
     return Image.fromarray(img_rescale)
-
-# Define function to create dataset with transformations
-class CustomDataset(Dataset):
-    def __init__(self, images, transform=None):
-        self.images = images
-        self.transform = transform
-
-    def __len__(self):
-        return len(self.images)
-
-    def __getitem__(self, idx):
-        image = self.images[idx]
-        if self.transform:
-            image = self.transform(image)
-        return image
-
-def create_transformed_dataset(image, batch_size=20):
-    transform = transforms.Compose([
-        transforms.Resize(240),
-        transforms.CenterCrop(200),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomRotation(10),
-        transforms.RandomAffine(degrees=10, translate=(0.1, 0.1), scale=(0.9, 1.1), shear=10),
-        transforms.ToTensor()
-    ])
-    dataset = [image for _ in range(batch_size)]
-    dataset = CustomDataset(images=dataset, transform=transform)
-    return dataset
 
 # Streamlit app layout
 st.title("Pediatric Supracondylar Humerus Fracture X-Ray Classification with Twin Network")
@@ -102,46 +69,13 @@ if uploaded_file is not None:
 
         st.image(enhanced_image, caption='Enhanced X-Ray', use_column_width=True)
 
-        # Create dataset with transformations
-        transformed_dataset = create_transformed_dataset(enhanced_image, batch_size=20)
-        dataloader = DataLoader(transformed_dataset, batch_size=1)
+        # Create datasets with and without augmentation
+        dataloader_lion = DataLoader(create_transformed_dataset(enhanced_image, batch_size=20, augment=True), batch_size=1)
+        dataloader_swdsgd = DataLoader(create_transformed_dataset(enhanced_image, batch_size=20, augment=True), batch_size=1)
+        dataloader_no_augment = DataLoader(create_transformed_dataset(enhanced_image, batch_size=1, augment=False), batch_size=1)
 
-        lion_model.eval()
-        swdsgd_model.eval()
-
-        # Initialize prediction variables
-        lion_predictions = []
-        swdsgd_predictions = []
-
-        for inputs in dataloader:
-            inputs = inputs.to(device)
-            with torch.no_grad():
-                lion_output = lion_model(inputs)
-                lion_pred = (lion_output > 0.5).view(-1).long()
-                lion_predictions.extend(lion_pred.cpu().numpy())
-
-                # Only run swdsgd_model if lion_model predicts "Normal"
-                if lion_pred == 0:
-                    swdsgd_output = swdsgd_model(inputs)
-                    swdsgd_pred = (swdsgd_output > 0.5).view(-1).long()
-                    swdsgd_predictions.extend(swdsgd_pred.cpu().numpy())
-
-        # Determine final prediction
-        if any(pred == 1 for pred in lion_predictions):
-            prediction = "Fractured Pediatric Supracondylar Humerus"
-            confidence = np.mean(lion_predictions)
-        else:
-            if any(pred == 1 for pred in swdsgd_predictions):
-                prediction = "Fractured Pediatric Supracondylar Humerus"
-                confidence = np.mean(swdsgd_predictions)
-            else:
-                prediction = "Normal"
-                confidence = 1 - np.mean(swdsgd_predictions)
-        
-        # Apply confidence threshold logic
-        if confidence < 0.10:
-            prediction = "Normal"
-            confidence = 1 - confidence
+        # Get the prediction
+        prediction, confidence = predict_fracture(lion_model, swdsgd_model, dataloader_lion, dataloader_swdsgd, device)
 
         # Display the prediction in a highlighted box
         st.markdown(f"<div style='border:2px solid #000; padding: 10px; background-color: #f0f0f0;'><strong>Prediction:</strong> {prediction}<br><strong>Confidence:</strong> {confidence:.2f}</div>", unsafe_allow_html=True)
@@ -149,7 +83,7 @@ if uploaded_file is not None:
         # Generate and display CAM on the cropped image
         if cropped_image is not None:
             img_tensor = transforms.ToTensor()(enhanced_image).unsqueeze(0).to(device)
-            cam = get_cam(lion_model if any(pred == 1 for pred in lion_predictions) else swdsgd_model, img_tensor, 'base_model.features')
+            cam = get_cam(lion_model if prediction == "Fractured Pediatric Supracondylar Humerus" else swdsgd_model, img_tensor, 'base_model.features')
             cam_image = apply_cam_on_image(np.array(cropped_image.convert('RGB')), cam)
             st.image(cam_image, caption='Class Activation Map (CAM) on Cropped Image', use_column_width=True)
 
