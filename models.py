@@ -72,7 +72,7 @@ class ResNetUNet(nn.Module):
 def load_standard_model_weights(model, checkpoint_path, map_location='cpu'):
     """Load model weights from a checkpoint in the standard format with 'model_state_dict'."""
     checkpoint = torch.load(checkpoint_path, map_location=map_location)
-    print("Standard Checkpoint keys:", checkpoint.keys())  # Print keys for debugging
+    print("Standard Checkpoint loaded successfully.")
     if "model_state_dict" in checkpoint:
         model.load_state_dict(checkpoint["model_state_dict"])
     else:
@@ -82,9 +82,10 @@ def load_standard_model_weights(model, checkpoint_path, map_location='cpu'):
 def load_direct_model_weights(model, checkpoint_path, map_location='cpu'):
     """Load model weights from a checkpoint with weights directly."""
     checkpoint = torch.load(checkpoint_path, map_location=map_location)
-    print("Direct Checkpoint keys:", checkpoint.keys())  # Print keys for debugging
+    print("Direct Checkpoint loaded successfully.")
     model.load_state_dict(checkpoint)
     return model
+
 
 
 
