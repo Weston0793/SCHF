@@ -3,11 +3,10 @@ import torch
 from torchvision import transforms
 import numpy as np
 from PIL import Image, ImageOps, ImageFilter
-import cv2
 from torch.utils.data import Dataset, DataLoader
 from models import BinaryMobileNetV2, BinaryMobileNetV3Small, ResNetUNet, load_standard_model_weights, load_direct_model_weights
 from autocrop import autocrop_image
-from skimage import exposure, img_as_ubyte
+from skimage import exposure
 from cam_helper import get_cam, apply_cam_on_image
 
 # Initialize models
@@ -17,11 +16,8 @@ crop_model = ResNetUNet()
 
 # Load the twin models and crop model
 models_folder = "models"
-# Load the twin models using the standard format loader
 lion_model = load_standard_model_weights(lion_model, f"{models_folder}/LionMobileNetV3Small.pth", map_location='cpu')
 swdsgd_model = load_standard_model_weights(swdsgd_model, f"{models_folder}/SWDSGDMobileNetV2.pth", map_location='cpu')
-
-# Load the crop model using the direct format loader
 crop_model = load_direct_model_weights(crop_model, f"{models_folder}/best_model_cropper.pth", map_location='cpu')
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -89,7 +85,7 @@ if uploaded_file is not None:
             transforms.ToTensor()
         ])
         image_tensor = transform(image).unsqueeze(0).to(device)
-        cropped_image = autocrop_image(image_tensor, crop_model, device)
+        cropped_image, crop_coords = autocrop_image(image_tensor, crop_model, device)
         
         if cropped_image is not None:
             st.image(cropped_image, caption='Cropped X-Ray', use_column_width=True)
@@ -150,12 +146,21 @@ if uploaded_file is not None:
         st.write(f"**Confidence:** {confidence:.2f}")
 
         # Generate and display CAM
-        if cropped_image is not None:
+        if cropped_image is not None and crop_coords is not None:
+            x_min, y_min, x_max, y_max = crop_coords
             img_tensor = transforms.ToTensor()(enhanced_image).unsqueeze(0).to(device)
             cam = get_cam(lion_model if any(pred == 1 for pred in lion_predictions) else swdsgd_model, img_tensor, 'base_model.features')
-            cam_image = apply_cam_on_image(np.array(cropped_image.convert('RGB')), cam)
-            st.image(cam_image, caption='Class Activation Map (CAM)', use_column_width=True)
+            
+            # Resize CAM to the cropped image size
+            cam_resized = cv2.resize(cam, (x_max - x_min, y_max - y_min))
+            original_image_np = np.array(image)
+            
+            # Create a full-size CAM mask
+            full_size_cam = np.zeros_like(original_image_np)
+            full_size_cam[y_min:y_max, x_min:x_max] = cam_resized
+            
+            cam_image = apply_cam_on_image(original_image_np, full_size_cam)
+            st.image(cam_image, caption='Class Activation Map (CAM) on Original Image', use_column_width=True)
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
-
