@@ -145,7 +145,7 @@ class CustomDataset(Dataset):
             image = self.transform(image)
         return image
 
-def create_transformed_dataset(image_pil, batch_size=20, augment=True):
+def create_transformed_dataset(image, batch_size=20, augment=True):
     transform_list = [
         transforms.Resize([240, 240]),
         transforms.CenterCrop([200, 200]),
@@ -167,9 +167,8 @@ def create_transformed_dataset(image_pil, batch_size=20, augment=True):
         ])
     
     transform = transforms.Compose(transform_list)
-    dataset = [transform(image_pil) for _ in range(batch_size)]  # Apply the transformations to the PIL image
-    dataset = CustomDataset(images=dataset, transform=None)  # No additional transform is needed
-    return dataset
+    dataset = [transform(image) for _ in range(batch_size)]
+    return CustomDataset(images=dataset)
 
 def load_models(lion_model, swdsgd_model, crop_model, models_folder, device):
     lion_model = load_standard_model_weights(lion_model, f"{models_folder}/LionMobileNetV3Small.pth", map_location='cpu')
