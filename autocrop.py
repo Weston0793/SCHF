@@ -22,3 +22,4 @@ def autocrop_image(image_tensor, cropmodel, device, threshold=0.5):
         return None, None
 
     return Image.fromarray((roi * 255).astype(np.uint8)), (x_min, y_min, x_max, y_max)
+
