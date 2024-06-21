@@ -1,7 +1,6 @@
 import torch
 import numpy as np
 from PIL import Image
-import cv2
 
 def autocrop_image(image_tensor, cropmodel, device, threshold=0.5):
     cropmodel.eval()
@@ -13,13 +12,13 @@ def autocrop_image(image_tensor, cropmodel, device, threshold=0.5):
 
     y, x = np.where(thresholded_mask)
     if len(x) == 0 or len(y) == 0:
-        return None
+        return None, None
 
     x_min, x_max = np.min(x), np.max(x)
     y_min, y_max = np.min(y), np.max(y)
     
     roi = image_tensor[0, 0].cpu().numpy()[y_min:y_max, x_min:x_max]
     if roi.size == 0:
-        return None
+        return None, None
 
-    return Image.fromarray((roi * 255).astype(np.uint8))
+    return Image.fromarray((roi * 255).astype(np.uint8)), (x_min, y_min, x_max, y_max)
