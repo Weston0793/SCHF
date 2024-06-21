@@ -155,6 +155,9 @@ if uploaded_file is not None:
             # Resize CAM to the cropped image size
             cam_resized = cv2.resize(cam, (x_max - x_min, y_max - y_min))
             original_image_np = np.array(image)
+
+            # Ensure the CAM mask has 3 channels
+            cam_resized = np.repeat(cam_resized[:, :, np.newaxis], 3, axis=2)
             
             # Create a full-size CAM mask
             full_size_cam = np.zeros_like(original_image_np)
