@@ -145,7 +145,7 @@ class CustomDataset(Dataset):
             image = self.transform(image)
         return image
 
-def create_transformed_dataset(image_tensor, batch_size=20, augment=True):
+def create_transformed_dataset(image_pil, batch_size=20, augment=True):
     transform_list = [
         transforms.Resize([240, 240]),
         transforms.CenterCrop([200, 200]),
@@ -167,7 +167,7 @@ def create_transformed_dataset(image_tensor, batch_size=20, augment=True):
         ])
     
     transform = transforms.Compose(transform_list)
-    dataset = [transform(image_tensor.squeeze(0)) for _ in range(batch_size)]  # Apply the transformations to the tensor
+    dataset = [transform(image_pil) for _ in range(batch_size)]  # Apply the transformations to the PIL image
     dataset = CustomDataset(images=dataset, transform=None)  # No additional transform is needed
     return dataset
 
