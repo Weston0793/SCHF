@@ -61,9 +61,6 @@ def apply_cam_on_image(img, cam):
     Returns:
         np.ndarray: The image with the CAM applied.
     """
-    if len(cam.shape) == 2:  # If cam is single channel
-        cam = np.repeat(cam[:, :, np.newaxis], 3, axis=2)
-    
     cam = cv2.resize(cam, (img.shape[1], img.shape[0]))  # Ensure the CAM is resized to the image dimensions
     heatmap = cv2.applyColorMap(np.uint8(255 * (1 - cam)), cv2.COLORMAP_TWILIGHT_SHIFTED)  # Apply the CAM mask
     heatmap = np.float32(heatmap) / 255
