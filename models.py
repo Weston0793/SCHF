@@ -67,25 +67,23 @@ class ResNetUNet(nn.Module):
         return torch.sigmoid(x3)
 
 
-def load_model_weights(model, checkpoint_path, model_type='standard'):
-    """Load model weights from a checkpoint, handling different formats."""
+# Define loading functions
+def load_standard_model_weights(model, checkpoint_path):
+    """Load model weights from a checkpoint in the standard format with 'model_state_dict'."""
     checkpoint = torch.load(checkpoint_path)
-    print("Checkpoint keys:", checkpoint.keys())  # Print keys for debugging
-
-    if model_type == 'standard':
-        if "model_state_dict" in checkpoint:
-            model.load_state_dict(checkpoint["model_state_dict"])
-        else:
-            raise KeyError(f"'model_state_dict' not found in the checkpoint file: {checkpoint_path}")
-    elif model_type == 'direct':
-        model.load_state_dict(checkpoint)
+    print("Standard Checkpoint keys:", checkpoint.keys())  # Print keys for debugging
+    if "model_state_dict" in checkpoint:
+        model.load_state_dict(checkpoint["model_state_dict"])
     else:
-        raise ValueError(f"Unsupported model type: {model_type}")
-    
+        raise KeyError(f"'model_state_dict' not found in the checkpoint file: {checkpoint_path}")
     return model
 
-# Example usage
-crop_model = ResNetUNet()
-crop_model = load_model_weights(crop_model, f"{models_folder}/best_model_cropper.pth", model_type='direct')
+def load_direct_model_weights(model, checkpoint_path):
+    """Load model weights from a checkpoint with weights directly."""
+    checkpoint = torch.load(checkpoint_path)
+    print("Direct Checkpoint keys:", checkpoint.keys())  # Print keys for debugging
+    model.load_state_dict(checkpoint)
+    return model
+
 
 
