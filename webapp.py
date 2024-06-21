@@ -8,6 +8,7 @@ from autocrop import autocrop_image
 from skimage import exposure
 from cam_helper import get_cam, apply_cam_on_image
 from predict import create_transformed_dataset, load_models, predict_fracture, CustomDataset
+from torch.utils.data import DataLoader
 
 # Initialize models
 lion_model = BinaryMobileNetV3Small()
