@@ -14,15 +14,11 @@ lion_model = BinaryMobileNetV3Small()
 swdsgd_model = BinaryMobileNetV2()
 crop_model = ResNetUNet()
 
-# Define the folder containing the model weights
+# Load the twin models and crop model
 models_folder = "models"
-
-# Load the twin models using the standard format loader
-lion_model = load_standard_model_weights(lion_model, f"{models_folder}/LionMobileNetV3Small.pth")
-swdsgd_model = load_standard_model_weights(swdsgd_model, f"{models_folder}/SWDSGDMobileNetV2.pth")
-
-# Load the crop model using the direct format loader
-crop_model = load_direct_model_weights(crop_model, f"{models_folder}/best_model_cropper.pth")
+lion_model = load_custom_model_weights(lion_model, f"{models_folder}/LionMobileNetV3Small.pth")
+swdsgd_model = load_custom_model_weights(swdsgd_model, f"{models_folder}/SWDSGDMobileNetV2.pth")
+crop_model = load_custom_model_weights(crop_model, f"{models_folder}/best_model_cropper.pth")
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 lion_model.to(device)
@@ -148,6 +144,13 @@ if uploaded_file is not None:
 
         st.write(f"**Prediction:** {prediction}")
         st.write(f"**Confidence:** {confidence:.2f}")
+
+        # Generate and display CAM
+        if cropped_image is not None:
+            img_tensor = transforms.ToTensor()(enhanced_image).unsqueeze(0).to(device)
+            cam = get_cam(lion_model if any(pred == 1 for pred in lion_predictions) else swdsgd_model, img_tensor, 'base_model.features')
+            cam_image = apply_cam_on_image(np.array(cropped_image.convert('RGB')), cam)
+            st.image(cam_image, caption='Class Activation Map (CAM)', use_column_width=True)
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
