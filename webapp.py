@@ -47,32 +47,31 @@ if uploaded_file is not None:
         image = Image.open(uploaded_file).convert('L')
         st.image(image, caption='Uploaded X-Ray', use_column_width=True)
 
-        # Autocrop the image
-        transform = transforms.Compose([
-            transforms.Resize((256, 256)),
-            transforms.ToTensor()
-        ])
-        image_tensor = transform(image).unsqueeze(0).to(device)
-        cropped_image, _ = autocrop_image(image_tensor, crop_model, device)
-        
-        if cropped_image is not None:
-            st.image(cropped_image, caption='Cropped X-Ray', use_column_width=True)
-            enhanced_image = cropped_image
-        else:
-            st.warning("No region of interest found. Using original image.")
-            enhanced_image = image
-
-        # Apply image enhancements
-        enhanced_image = adaptive_histogram_equalization(enhanced_image)
+        # Apply image enhancements on the original image
+        enhanced_image = adaptive_histogram_equalization(image)
         enhanced_image = sharpen_image(enhanced_image)
         enhanced_image = contrast_stretching(enhanced_image)
 
         st.image(enhanced_image, caption='Enhanced X-Ray', use_column_width=True)
 
+        # Autocrop the enhanced image
+        transform = transforms.Compose([
+            transforms.Resize((256, 256)),
+            transforms.ToTensor()
+        ])
+        image_tensor = transform(enhanced_image).unsqueeze(0).to(device)
+        cropped_image, _ = autocrop_image(image_tensor, crop_model, device)
+        
+        if cropped_image is not None:
+            st.image(cropped_image, caption='Cropped X-Ray', use_column_width=True)
+        else:
+            st.warning("No region of interest found. Using original image.")
+            cropped_image = enhanced_image
+
         # Create datasets with and without augmentation
-        dataloader_lion = DataLoader(create_transformed_dataset(enhanced_image, batch_size=20, augment=True), batch_size=1)
-        dataloader_swdsgd = DataLoader(create_transformed_dataset(enhanced_image, batch_size=20, augment=True), batch_size=1)
-        dataloader_no_augment = DataLoader(create_transformed_dataset(enhanced_image, batch_size=1, augment=False), batch_size=1)
+        dataloader_lion = DataLoader(create_transformed_dataset(cropped_image, batch_size=20, augment=True), batch_size=1)
+        dataloader_swdsgd = DataLoader(create_transformed_dataset(cropped_image, batch_size=20, augment=True), batch_size=1)
+        dataloader_no_augment = DataLoader(create_transformed_dataset(cropped_image, batch_size=1, augment=False), batch_size=1)
 
         # Get the prediction
         prediction, confidence = predict_fracture(lion_model, swdsgd_model, dataloader_lion, dataloader_swdsgd, device)
@@ -82,7 +81,7 @@ if uploaded_file is not None:
 
         # Generate and display CAM on the cropped image
         if cropped_image is not None:
-            img_tensor = transforms.ToTensor()(enhanced_image).unsqueeze(0).to(device)
+            img_tensor = transforms.ToTensor()(cropped_image).unsqueeze(0).to(device)
             cam = get_cam(lion_model if prediction == "Fractured Pediatric Supracondylar Humerus" else swdsgd_model, img_tensor, 'base_model.features')
             cam_image = apply_cam_on_image(np.array(cropped_image.convert('RGB')), cam)
             st.image(cam_image, caption='Class Activation Map (CAM) on Cropped Image', use_column_width=True)
