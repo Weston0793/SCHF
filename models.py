@@ -41,7 +41,7 @@ class ResNetUNet(nn.Module):
 
     def __init__(self):
         super(ResNetUNet, self).__init__()
-        resnet = models.resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+        resnet = models.resnet18(weights=None)
         self.encoder = nn.Sequential(
             nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False),
             resnet.bn1,
