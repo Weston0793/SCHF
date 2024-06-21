@@ -66,8 +66,26 @@ class ResNetUNet(nn.Module):
         x3 = self.decoder(x2)
         return torch.sigmoid(x3)
 
-def load_custom_model_weights(model, model_weights_path):
-    checkpoint = torch.load(model_weights_path, map_location='cpu')
-    model_state_dict = checkpoint["model_state_dict"]
-    model.load_state_dict(model_state_dict)
+
+def load_model_weights(model, checkpoint_path, model_type='standard'):
+    """Load model weights from a checkpoint, handling different formats."""
+    checkpoint = torch.load(checkpoint_path)
+    print("Checkpoint keys:", checkpoint.keys())  # Print keys for debugging
+
+    if model_type == 'standard':
+        if "model_state_dict" in checkpoint:
+            model.load_state_dict(checkpoint["model_state_dict"])
+        else:
+            raise KeyError(f"'model_state_dict' not found in the checkpoint file: {checkpoint_path}")
+    elif model_type == 'direct':
+        model.load_state_dict(checkpoint)
+    else:
+        raise ValueError(f"Unsupported model type: {model_type}")
+    
     return model
+
+# Example usage
+crop_model = ResNetUNet()
+crop_model = load_model_weights(crop_model, f"{models_folder}/best_model_cropper.pth", model_type='direct')
+
+
