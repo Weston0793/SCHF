@@ -60,9 +60,11 @@ if uploaded_file is not None:
             transforms.ToTensor()
         ])
         image_tensor = transform(enhanced_image).unsqueeze(0).to(device)
-        cropped_image_pil, _ = autocrop_image(image_tensor, crop_model, device)
+        cropped_image_tensor, _ = autocrop_image(image_tensor, crop_model, device)
         
-        if cropped_image_pil is not None:
+        if cropped_image_tensor is not None:
+            # Convert the tensor to a PIL image
+            cropped_image_pil = transforms.ToPILImage()(cropped_image_tensor.squeeze(0).cpu())
             st.image(cropped_image_pil, caption='Cropped X-Ray', use_column_width=True)
         else:
             st.warning("No region of interest found. Using original image.")
