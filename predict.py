@@ -148,8 +148,7 @@ class CustomDataset(Dataset):
 def create_transformed_dataset(image, batch_size=20, augment=True):
     transform_list = [
         transforms.Resize([240, 240]),
-        transforms.CenterCrop([200, 200]),
-        transforms.ToTensor()
+        transforms.CenterCrop([200, 200])
     ]
     
     if augment:
@@ -167,8 +166,9 @@ def create_transformed_dataset(image, batch_size=20, augment=True):
         ])
     
     transform = transforms.Compose(transform_list)
-    dataset = [transform(image) for _ in range(batch_size)]
-    return CustomDataset(images=dataset)
+    transformed_images = [transform(image) for _ in range(batch_size)]
+    transformed_images = [transforms.ToTensor()(img) for img in transformed_images]
+    return CustomDataset(images=transformed_images)
 
 def load_models(lion_model, swdsgd_model, crop_model, models_folder, device):
     lion_model = load_standard_model_weights(lion_model, f"{models_folder}/LionMobileNetV3Small.pth", map_location='cpu')
