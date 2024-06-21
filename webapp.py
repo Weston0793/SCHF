@@ -60,18 +60,18 @@ if uploaded_file is not None:
             transforms.ToTensor()
         ])
         image_tensor = transform(enhanced_image).unsqueeze(0).to(device)
-        cropped_image, _ = autocrop_image(image_tensor, crop_model, device)
+        cropped_image_pil, _ = autocrop_image(image_tensor, crop_model, device)
         
-        if cropped_image is not None:
-            st.image(cropped_image, caption='Cropped X-Ray', use_column_width=True)
+        if cropped_image_pil is not None:
+            st.image(cropped_image_pil, caption='Cropped X-Ray', use_column_width=True)
         else:
             st.warning("No region of interest found. Using original image.")
-            cropped_image = enhanced_image
+            cropped_image_pil = enhanced_image
 
         # Create datasets with and without augmentation
-        dataloader_lion = DataLoader(create_transformed_dataset(cropped_image, batch_size=20, augment=True), batch_size=1)
-        dataloader_swdsgd = DataLoader(create_transformed_dataset(cropped_image, batch_size=20, augment=True), batch_size=1)
-        dataloader_no_augment = DataLoader(create_transformed_dataset(cropped_image, batch_size=1, augment=False), batch_size=1)
+        dataloader_lion = DataLoader(create_transformed_dataset(cropped_image_pil, batch_size=20, augment=True), batch_size=1)
+        dataloader_swdsgd = DataLoader(create_transformed_dataset(cropped_image_pil, batch_size=20, augment=True), batch_size=1)
+        dataloader_no_augment = DataLoader(create_transformed_dataset(cropped_image_pil, batch_size=1, augment=False), batch_size=1)
 
         # Get the prediction
         prediction, confidence = predict_fracture(lion_model, swdsgd_model, dataloader_lion, dataloader_swdsgd, device)
@@ -80,10 +80,11 @@ if uploaded_file is not None:
         st.markdown(f"<div style='border:2px solid #000; padding: 10px; background-color: #f0f0f0;'><strong>Prediction:</strong> {prediction}<br><strong>Confidence:</strong> {confidence:.2f}</div>", unsafe_allow_html=True)
 
         # Generate and display CAM on the cropped image
-        if cropped_image is not None:
-            img_tensor = transforms.ToTensor()(cropped_image).unsqueeze(0).to(device)
+        if cropped_image_pil is not None:
+            cropped_image_rgb = cropped_image_pil.convert('RGB')  # Ensure the image is in RGB format
+            img_tensor = transforms.ToTensor()(cropped_image_rgb).unsqueeze(0).to(device)
             cam = get_cam(lion_model if prediction == "Fractured Pediatric Supracondylar Humerus" else swdsgd_model, img_tensor, 'base_model.features')
-            cam_image = apply_cam_on_image(np.array(cropped_image.convert('RGB')), cam)
+            cam_image = apply_cam_on_image(np.array(cropped_image_rgb), cam)
             st.image(cam_image, caption='Class Activation Map (CAM) on Cropped Image', use_column_width=True)
 
     except Exception as e:
