@@ -1,81 +1,28 @@
 import streamlit as st
 import torch
-import torch.nn as nn
-import torchvision
-import torchvision.models as models
-import torchvision.transforms as transforms
-from torch.utils.data import Dataset, DataLoader
-from PIL import Image, ImageOps, ImageFilter
-from torchvision.models import MobileNet_V2_Weights, MobileNet_V3_Small_Weights
+from torchvision import transforms
 import numpy as np
+from PIL import Image, ImageOps, ImageFilter
 import cv2
-from skimage import exposure
-import matplotlib.pyplot as plt
-import random
-from cam_helper import get_cam, apply_cam_on_image  # Import the CAM helper functions
-
-# Define custom dataset
-class CustomDataset(Dataset):
-    def __init__(self, images, transform=None):
-        self.images = images
-        self.transform = transform
-
-    def __len__(self):
-        return len(self.images)
-
-    def __getitem__(self, idx):
-        image = self.images[idx]
-        if self.transform:
-            image = self.transform(image)
-        return image
-
-# Function to load model weights
-def load_custom_model_weights(model, model_weights_path):
-    checkpoint = torch.load(model_weights_path, map_location='cpu')
-    model_state_dict = checkpoint["model_state_dict"]
-    model.load_state_dict(model_state_dict)
-    return model
-
-# Define your models
-class BinaryMobileNetV2(nn.Module):
-    def __init__(self):
-        super(BinaryMobileNetV2, self).__init__()
-        base_model = models.mobilenet_v2()
-        base_model.features[0][0] = nn.Conv2d(1, 32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False)
-        base_model.classifier[-1] = nn.Linear(in_features=1280, out_features=1)
-        self.base_model = base_model
-
-    def forward(self, x):
-        x = self.base_model.features(x)
-        x = x.mean([2, 3])  # Global average pooling
-        x = self.base_model.classifier(x)
-        return torch.sigmoid(x)
-
-class BinaryMobileNetV3Small(nn.Module):
-    def __init__(self):
-        super(BinaryMobileNetV3Small, self).__init__()
-        base_model = models.mobilenet_v3_small()
-        base_model.features[0][0] = nn.Conv2d(1, 16, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False)
-        base_model.classifier = nn.Sequential(
-            nn.Linear(in_features=576, out_features=1, bias=True),
-            nn.Sigmoid()
-        )
-        self.base_model = base_model
-
-    def forward(self, x):
-        x = self.base_model.features(x)
-        x = x.mean([2, 3])  # Global average pooling
-        x = self.base_model.classifier(x)
-        return x
+from torch.utils.data import Dataset, DataLoader
+from models import BinaryMobileNetV2, BinaryMobileNetV3Small, ResNetUNet, load_custom_model_weights
+from autocrop import autocrop_image
 
 # Initialize models
 lion_model = BinaryMobileNetV3Small()
 swdsgd_model = BinaryMobileNetV2()
+crop_model = ResNetUNet()
 
-# Load the twin models
+# Load the twin models and crop model
 models_folder = "models"
 lion_model = load_custom_model_weights(lion_model, f"{models_folder}/LionMobileNetV3Small.pth")
 swdsgd_model = load_custom_model_weights(swdsgd_model, f"{models_folder}/SWDSGDMobileNetV2.pth")
+crop_model = load_custom_model_weights(crop_model, f"{models_folder}/best_model_cropper.pth")
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+lion_model.to(device)
+swdsgd_model.to(device)
+crop_model.to(device)
 
 # Define image enhancement functions
 def adaptive_histogram_equalization(image):
@@ -94,6 +41,20 @@ def contrast_stretching(image):
     return Image.fromarray(img_rescale)
 
 # Define function to create dataset with transformations
+class CustomDataset(Dataset):
+    def __init__(self, images, transform=None):
+        self.images = images
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, idx):
+        image = self.images[idx]
+        if self.transform:
+            image = self.transform(image)
+        return image
+
 def create_transformed_dataset(image, batch_size=20):
     transform = transforms.Compose([
         transforms.Resize(240),
@@ -117,8 +78,23 @@ if uploaded_file is not None:
         image = Image.open(uploaded_file).convert('L')
         st.image(image, caption='Uploaded X-Ray', use_column_width=True)
 
+        # Autocrop the image
+        transform = transforms.Compose([
+            transforms.Resize((256, 256)),
+            transforms.ToTensor()
+        ])
+        image_tensor = transform(image).unsqueeze(0).to(device)
+        cropped_image = autocrop_image(image_tensor, crop_model, device)
+        
+        if cropped_image is not None:
+            st.image(cropped_image, caption='Cropped X-Ray', use_column_width=True)
+            enhanced_image = cropped_image
+        else:
+            st.warning("No region of interest found. Using original image.")
+            enhanced_image = image
+
         # Apply image enhancements
-        enhanced_image = adaptive_histogram_equalization(image)
+        enhanced_image = adaptive_histogram_equalization(enhanced_image)
         enhanced_image = sharpen_image(enhanced_image)
         enhanced_image = contrast_stretching(enhanced_image)
 
@@ -130,7 +106,6 @@ if uploaded_file is not None:
 
         lion_model.eval()
         swdsgd_model.eval()
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         # Initialize prediction variables
         lion_predictions = []
@@ -168,11 +143,6 @@ if uploaded_file is not None:
 
         st.write(f"**Prediction:** {prediction}")
         st.write(f"**Confidence:** {confidence:.2f}")
-
-        # Get and display CAM
-        cam = get_cam(lion_model, inputs, 'base_model.features.12')  # Update with the correct layer name
-        cam_image = apply_cam_on_image(np.array(enhanced_image.convert('RGB')), cam)  # Convert to RGB for color map application
-        st.image(cam_image, caption='Class Activation Map (CAM)', use_column_width=True)
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
