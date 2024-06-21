@@ -52,7 +52,7 @@ def get_cam(model, img_tensor, target_layer):
 
 def apply_cam_on_image(img, cam):
     """
-    Apply the CAM mask on the image.
+    Apply the CAM mask on the image with an inverted colormap.
     
     Args:
         img (np.ndarray): The original image.
@@ -62,7 +62,7 @@ def apply_cam_on_image(img, cam):
         np.ndarray: The image with the CAM applied.
     """
     cam = cv2.resize(cam, (img.shape[1], img.shape[0]))  # Ensure the CAM is resized to the image dimensions
-    heatmap = cv2.applyColorMap(np.uint8(255 * cam), cv2.COLORMAP_TWILIGHT_SHIFTED)
+    heatmap = cv2.applyColorMap(np.uint8(255 * (1 - cam)), cv2.COLORMAP_TWILIGHT_SHIFTED)  # Apply the CAM mask
     heatmap = np.float32(heatmap) / 255
     cam_img = heatmap + np.float32(img) / 255  # Normalize the image before adding
     cam_img = cam_img / np.max(cam_img)
