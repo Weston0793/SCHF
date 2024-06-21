@@ -70,10 +70,13 @@ if uploaded_file is not None:
             st.warning("No region of interest found. Using original image.")
             cropped_tensor = image_tensor
 
+        # Convert tensor to PIL image for dataset creation
+        cropped_image_pil = transforms.ToPILImage()(cropped_tensor.squeeze(0))
+
         # Create datasets with and without augmentation
-        dataloader_lion = DataLoader(create_transformed_dataset(cropped_tensor, batch_size=20, augment=True), batch_size=1)
-        dataloader_swdsgd = DataLoader(create_transformed_dataset(cropped_tensor, batch_size=20, augment=True), batch_size=1)
-        dataloader_no_augment = DataLoader(create_transformed_dataset(cropped_tensor, batch_size=1, augment=False), batch_size=1)
+        dataloader_lion = DataLoader(create_transformed_dataset(cropped_image_pil, batch_size=20, augment=True), batch_size=1)
+        dataloader_swdsgd = DataLoader(create_transformed_dataset(cropped_image_pil, batch_size=20, augment=True), batch_size=1)
+        dataloader_no_augment = DataLoader(create_transformed_dataset(cropped_image_pil, batch_size=1, augment=False), batch_size=1)
 
         # Get the prediction
         prediction, confidence = predict_fracture(lion_model, swdsgd_model, dataloader_lion, dataloader_swdsgd, device)
