@@ -5,7 +5,7 @@ import numpy as np
 from PIL import Image, ImageOps, ImageFilter
 import cv2
 from torch.utils.data import Dataset, DataLoader
-from models import BinaryMobileNetV2, BinaryMobileNetV3Small, ResNetUNet, load_custom_model_weights
+from models import BinaryMobileNetV2, BinaryMobileNetV3Small, ResNetUNet, load_standard_model_weights, load_direct_model_weights
 from autocrop import autocrop_image
 
 # Initialize models
