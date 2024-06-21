@@ -16,9 +16,12 @@ crop_model = ResNetUNet()
 
 # Load the twin models and crop model
 models_folder = "models"
-lion_model = load_custom_model_weights(lion_model, f"{models_folder}/LionMobileNetV3Small.pth")
-swdsgd_model = load_custom_model_weights(swdsgd_model, f"{models_folder}/SWDSGDMobileNetV2.pth")
-crop_model = load_custom_model_weights(crop_model, f"{models_folder}/best_model_cropper.pth")
+# Load the twin models using the standard format loader
+lion_model = load_standard_model_weights(lion_model, f"{models_folder}/LionMobileNetV3Small.pth", map_location='cpu')
+swdsgd_model = load_standard_model_weights(swdsgd_model, f"{models_folder}/SWDSGDMobileNetV2.pth", map_location='cpu')
+
+# Load the crop model using the direct format loader
+crop_model = load_direct_model_weights(crop_model, f"{models_folder}/best_model_cropper.pth", map_location='cpu')
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 lion_model.to(device)
