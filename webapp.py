@@ -89,16 +89,16 @@ if uploaded_file is not None:
 
         # Generate and display CAM on the cropped image
         if cropped_image_pil is not None:
-            cropped_image_rgb = cropped_image_pil.convert('RGB')  # Ensure the image is in RGB format
-            st.write("Debug: Converted cropped image to RGB.")
+            cropped_image_gray = cropped_image_pil.convert('L')  # Ensure the image is in grayscale format
+            st.write("Debug: Converted cropped image to grayscale.")
             
-            img_tensor = transforms.ToTensor()(cropped_image_rgb).unsqueeze(0).to(device)
+            img_tensor = transforms.ToTensor()(cropped_image_gray).unsqueeze(0).to(device)
             st.write("Debug: Image tensor shape for CAM generation:", img_tensor.shape)
             
             cam = get_cam(lion_model if prediction == "Fractured Pediatric Supracondylar Humerus" else swdsgd_model, img_tensor, 'base_model.features')
             st.write("Debug: CAM generated.")
             
-            cam_image = apply_cam_on_image(np.array(cropped_image_rgb), cam)
+            cam_image = apply_cam_on_image(np.array(cropped_image_gray.convert('RGB')), cam)  # Convert to RGB for overlay
             st.image(cam_image, caption='Class Activation Map (CAM) on Cropped Image', use_column_width=True)
             st.write("Debug: CAM image displayed.")
     except Exception as e:
