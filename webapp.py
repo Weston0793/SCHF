@@ -12,6 +12,14 @@ from enhancements import adaptive_histogram_equalization, sharpen_image, contras
 from augmentations import create_transformed_dataset
 from predictions import load_models, predict_fracture
 
+# Disclaimer
+st.markdown("""
+    # Disclaimer
+    **This application is for research and educational purposes only.**
+    The AI models utilized herein may produce inaccurate or unreliable results. 
+    Always consult a medical professional for clinical diagnosis and treatment.
+""")
+
 # Initialize models
 lion_model = BinaryMobileNetV3Small()
 swdsgd_model = BinaryMobileNetV2()
