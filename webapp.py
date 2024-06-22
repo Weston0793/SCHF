@@ -17,8 +17,8 @@ st.markdown("""
     ### Disclaimer
     <div style="text-align: justify; font-size: 1.25rem;">
         <strong>This application is for research and educational purposes only.</strong><br>
-        The AI models utilized herein may produce inaccurate or unreliable results. 
-        Always consult a medical professional for clinical diagnosis and treatment.
+        <strong>The AI models utilized herein may produce inaccurate or unreliable results.</strong><br>
+        <strong>Always consult a medical professional for clinical diagnosis and treatment.</strong>
     </div>
 """, unsafe_allow_html=True)
 
