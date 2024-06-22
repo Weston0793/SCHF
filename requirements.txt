@@ -4,5 +4,5 @@ torchvision
 pillow
 numpy
 opencv-python-headless
-scikit-imag
+scikit-image
 matplotlib
