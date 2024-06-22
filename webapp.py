@@ -14,11 +14,12 @@ from predictions import load_models, predict_fracture
 
 # Disclaimer
 st.markdown("""
-    # Disclaimer
-    **This application is for research and educational purposes only.**
-    The AI models utilized herein may produce inaccurate or unreliable results. 
-    Always consult a medical professional for clinical diagnosis and treatment.
-""")
+    <div style="text-align: justify; font-size: 1.25rem;">
+        <strong>This application is for research and educational purposes only.</strong><br>
+        The AI models utilized herein may produce inaccurate or unreliable results. 
+        Always consult a medical professional for clinical diagnosis and treatment.
+    </div>
+""", unsafe_allow_html=True)
 
 # Initialize models
 lion_model = BinaryMobileNetV3Small()
@@ -49,22 +50,29 @@ st.markdown("""
         vertical-align: super;
         font-size: smaller;
     }
+    .upload-label {
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-uploaded_file = st.file_uploader("Upload X-Ray Image", type=["jpg", "png", "jpeg"])
+uploaded_file = st.file_uploader("Upload X-Ray Image", type=["jpg", "png", "jpeg"], label_visibility="visible")
+st.markdown("<div class='upload-label'>Upload X-Ray Image</div>", unsafe_allow_html=True)
 
 if uploaded_file is not None:
     try:
         # Read the image using PIL
         image = Image.open(uploaded_file).convert('L')
         st.image(image, caption='Uploaded X-Ray', use_column_width=True)
+        st.markdown("<div class='upload-label'>Uploaded X-Ray</div>", unsafe_allow_html=True)
 
         # Apply new image enhancements on the original image
         enhanced_image = adaptive_histogram_equalization(image)
         enhanced_image = sharpen_image(enhanced_image)
         enhanced_image = contrast_stretching(enhanced_image)
         st.image(enhanced_image, caption='Enhanced X-Ray', use_column_width=True)
+        st.markdown("<div class='upload-label'>Enhanced X-Ray</div>", unsafe_allow_html=True)
 
         # Autocrop the enhanced image
         transform = transforms.Compose([
@@ -77,6 +85,7 @@ if uploaded_file is not None:
         
         if cropped_image_pil is not None:
             st.image(cropped_image_pil, caption='Cropped X-Ray', use_column_width=True)
+            st.markdown("<div class='upload-label'>Cropped X-Ray</div>", unsafe_allow_html=True)
         else:
             st.warning("No region of interest found. Using original image.")
             cropped_image_pil = enhanced_image
@@ -102,6 +111,7 @@ if uploaded_file is not None:
             
             cam_image = apply_cam_on_image(np.array(cropped_image_gray.convert('RGB')), cam)  # Convert to RGB for overlay
             st.image(cam_image, caption='Class Activation Map (CAM) on Cropped Image', use_column_width=True)
+            st.markdown("<div class='upload-label'>Class Activation Map (CAM) on Cropped Image</div>", unsafe_allow_html=True)
     except Exception as e:
         st.error(f"An error occurred: {e}")
 
