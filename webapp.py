@@ -44,7 +44,7 @@ st.markdown("""
 # Disclaimer
 st.markdown("""
     <div class="disclaimer-box">
-        ### Disclaimer
+        <h3>Disclaimer</h3>
         <div style="text-align: justify; font-size: 1.25rem;">
             <strong>This application is for research and educational purposes only.</strong><br>
             <strong>The AI models utilized herein may produce inaccurate or unreliable results.</strong><br>
