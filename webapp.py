@@ -12,30 +12,7 @@ from enhancements import adaptive_histogram_equalization, sharpen_image, contras
 from augmentations import create_transformed_dataset
 from predictions import load_models, predict_fracture
 
-# Disclaimer
-st.markdown("""
-    ### Disclaimer
-    <div style="text-align: justify; font-size: 1.25rem;">
-        <strong>This application is for research and educational purposes only.</strong><br>
-        <strong>The AI models utilized herein may produce inaccurate or unreliable results.</strong><br>
-        <strong>Always consult a medical professional for clinical diagnosis and treatment.</strong>
-    </div>
-""", unsafe_allow_html=True)
-
-# Initialize models
-lion_model = BinaryMobileNetV3Small()
-swdsgd_model = BinaryMobileNetV2()
-crop_model = ResNetUNet()
-
-# Load models
-models_folder = "models"
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-lion_model, swdsgd_model, crop_model = load_models(lion_model, swdsgd_model, crop_model, models_folder, device)
-
-# Streamlit app layout
-st.title("Pediatric Supracondylar Humerus X-Ray Fracture Detector employing a Twin Convolutional Neural Network")
-
-# Style for larger text and highlighted prediction box
+# Style for larger text, highlighted prediction box, and disclaimer box
 st.markdown("""
     <style>
     .large-text {
@@ -55,8 +32,39 @@ st.markdown("""
         font-size: 1.5rem;
         font-weight: bold;
     }
+    .disclaimer-box {
+        border: 2px solid #0073e6;
+        padding: 15px;
+        background-color: #e6f7ff;
+        margin-bottom: 20px;
+    }
     </style>
 """, unsafe_allow_html=True)
+
+# Disclaimer
+st.markdown("""
+    <div class="disclaimer-box">
+        ### Disclaimer
+        <div style="text-align: justify; font-size: 1.25rem;">
+            <strong>This application is for research and educational purposes only.</strong><br>
+            <strong>The AI models utilized herein may produce inaccurate or unreliable results.</strong><br>
+            <strong>Always consult a medical professional for clinical diagnosis and treatment.</strong>
+        </div>
+    </div>
+""", unsafe_allow_html=True)
+
+# Initialize models
+lion_model = BinaryMobileNetV3Small()
+swdsgd_model = BinaryMobileNetV2()
+crop_model = ResNetUNet()
+
+# Load models
+models_folder = "models"
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+lion_model, swdsgd_model, crop_model = load_models(lion_model, swdsgd_model, crop_model, models_folder, device)
+
+# Streamlit app layout
+st.title("Pediatric Supracondylar Humerus X-Ray Fracture Detector employing a Twin Convolutional Neural Network")
 
 # Large label above the upload function
 st.markdown("<div class='upload-label'>Upload X-Ray Image</div>", unsafe_allow_html=True)
