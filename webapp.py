@@ -64,7 +64,16 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 lion_model, swdsgd_model, crop_model = load_models(lion_model, swdsgd_model, crop_model, models_folder, device)
 
 # Streamlit app layout
-st.markdown("<h1 class='centered-title'>Pediatric Supracondylar Humerus X-Ray Fracture Detector employing a Twin Convolutional Neural Network</h1>", unsafe_allow_html=True)
+st.markdown("""
+    <style>
+    .centered-title {
+        text-align: center;
+        width: 100%;
+        display: block;
+    }
+    </style>
+    <h1 class='centered-title'>Pediatric Supracondylar Humerus X-Ray Fracture Detector employing a Twin Convolutional Neural Network</h1>
+""", unsafe_allow_html=True)
 
 # Large label above the upload function
 st.markdown("<div class='upload-label'>Upload X-Ray Image</div>", unsafe_allow_html=True)
