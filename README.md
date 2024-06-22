@@ -71,4 +71,4 @@ The source code for this project is available on GitHub: [GitHub Repository](htt
 
 ## License
 
-This project is licensed under the GNU License. See the [LICENSE](LICENSE) file for more details.
+This project is licensed under the GPL-3.0 License. See the [LICENSE](LICENSE) file for more details.
