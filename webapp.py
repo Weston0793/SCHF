@@ -23,7 +23,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 lion_model, swdsgd_model, crop_model = load_models(lion_model, swdsgd_model, crop_model, models_folder, device)
 
 # Streamlit app layout
-st.title("Pediatric Supracondylar Humerus Fracture X-Ray Classification with Twin Network")
+st.title("Pediatric Supracondylar Humerus X-Ray Fracture Detector employing a Twin Convolutional Neural Network")
 
 # Style for larger text and highlighted prediction box
 st.markdown("""
