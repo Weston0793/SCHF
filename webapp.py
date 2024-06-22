@@ -37,6 +37,10 @@ st.markdown("""
         background-color: #f0f0f0;
         font-size: 1.5rem;
     }
+    .superscript {
+        vertical-align: super;
+        font-size: smaller;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -96,12 +100,12 @@ if uploaded_file is not None:
 # Additional Information
 st.markdown("""
     ### Authors:
-    Aba Lőrincz 1,2,3, András Kedves2, Hermann Nudelman1,3, András Garami1, Gergő Józsa 1,3,* and Zsolt Kisander2
+    Aba Lőrincz<sup class='superscript'>1,2,3,*</sup>, András Kedves<sup class='superscript'>2</sup>, Hermann Nudelman<sup class='superscript'>1,3</sup>, András Garami<sup class='superscript'>1</sup>, Gergő Józsa<sup class='superscript'>1,3</sup>, and Zsolt Kisander<sup class='superscript'>2</sup>
     
     ### Affiliations:
-    1. Department of Thermophysiology, Institute for Translational Medicine, Medical School, University of Pécs, 12 Szigeti Street, H7624 Pécs, Hungary; aba.lorincz@gmail.com (AL); andras.garami@aok.pte.hu (AG)
-    2. Department of Automation, Faculty of Engineering and Information Technology, University of Pécs, 2 Boszorkány Street, H Pécs, Hungary; (AK) (Zs.K)
-    3. Division of Surgery, Traumatology, Urology, and Otorhinolaryngology, Department of Paediatrics, Clinical Complex, University of Pécs, 7 József Attila Street, H7623 Pécs, Hungary; jozsa.gergo@pte.hu (GJ)
+    1. Department of Thermophysiology, Institute for Translational Medicine, Medical School, University of Pécs, 12 Szigeti Street, H7624 Pécs, Hungary; aba.lorincz@gmail.com (AL); 
+    2. Department of Automation, Faculty of Engineering and Information Technology, University of Pécs, 2 Boszorkány Street, H Pécs, Hungary; 
+    3. Division of Surgery, Traumatology, Urology, and Otorhinolaryngology, Department of Paediatrics, Clinical Complex, University of Pécs, 7 József Attila Street, H7623 Pécs, Hungary; 
 
     ### Code:
     [GitHub Repository](https://github.com/Weston0793/SCHF/)
