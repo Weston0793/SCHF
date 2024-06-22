@@ -69,6 +69,10 @@ Alternatively, you can check out the hosted version of the application at [SCHF 
 
 The source code for this project is available on GitHub: [GitHub Repository](https://github.com/Weston0793/SCHF/)
 
+## DOI
+
+<a href="https://zenodo.org/doi/10.5281/zenodo.12433280"><img src="https://zenodo.org/badge/817533201.svg" alt="DOI"></a>
+
 ## License
 
 This project is licensed under the GPL-3.0 License. See the [LICENSE](LICENSE) file for more details.
