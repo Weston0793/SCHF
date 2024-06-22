@@ -11,7 +11,22 @@ from torch.utils.data import DataLoader
 from enhancements import adaptive_histogram_equalization, sharpen_image, contrast_stretching
 from augmentations import create_transformed_dataset
 from predictions import load_models, predict_fracture
+import pkg_resources
 
+def list_imported_libraries_versions():
+    # Get all installed packages
+    installed_packages = pkg_resources.working_set
+    # Create a dictionary with package names and their versions
+    packages = {pkg.key: pkg.version for pkg in installed_packages}
+    return packages
+
+# Get the versions of the imported libraries
+libraries_versions = list_imported_libraries_versions()
+
+# Display the library versions in Streamlit
+st.title("Library Versions")
+for library, version in libraries_versions.items():
+    st.write(f"{library}: {version}")
 # Style for larger text, highlighted prediction box, and disclaimer box
 st.markdown("""
     <style>
