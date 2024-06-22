@@ -31,13 +31,13 @@ def predict_fracture(lion_model, swdsgd_model, dataloader_lion, dataloader_swdsg
     lion_predictions = make_predictions(lion_model, dataloader_lion, device)
     lion_fractures = sum(lion_predictions)
 
-    if lion_fractures >= 3:
+    if lion_fractures >= 5:
         return "Fractured Pediatric Supracondylar Humerus", np.mean(lion_predictions)
     else:
         swdsgd_predictions = make_predictions(swdsgd_model, dataloader_swdsgd, device)
         swdsgd_fractures = sum(swdsgd_predictions)
 
-        if swdsgd_fractures >= 3:
+        if swdsgd_fractures >= 5:
             return "Fractured Pediatric Supracondylar Humerus", np.mean(swdsgd_predictions)
         else:
             return "Normal", 1 - np.mean(swdsgd_predictions)
